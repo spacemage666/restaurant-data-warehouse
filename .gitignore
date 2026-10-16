@@ -1,0 +1,20 @@
+# Virtual Enviornment
+.venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+
+# Enviornment
+.env
+
+# Generator Data
+*.parquet
+
+# Local VSCode Settings
+.vscode/
+
+# dbt processing results
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/
