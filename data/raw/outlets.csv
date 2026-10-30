@@ -1,0 +1,18 @@
+outlet_id,outlet_name,city,location_type,traffic_multiplier
+1,Outlet 01,Jakarta,mal,1.5
+2,Outlet 02,Bandung,campus,0.98
+3,Outlet 03,Medan,mal,1.5
+4,Outlet 04,Semarang,mal,1.37
+5,Outlet 05,Jakarta,mal,1.28
+6,Outlet 06,Semarang,mal,1.27
+7,Outlet 07,Bandung,food court,0.79
+8,Outlet 08,Jakarta,canteen,1.08
+9,Outlet 09,Medan,campus,1.07
+10,Outlet 10,Bandung,canteen,0.91
+11,Outlet 11,Jakarta,canteen,0.88
+12,Outlet 12,Surabaya,mal,1.55
+13,Outlet 13,Jakarta,canteen,1.07
+14,Outlet 14,Yogyakarta,mal,1.22
+15,Outlet 15,Medan,canteen,1.04
+16,Outlet 16,Semarang,canteen,0.91
+17,Outlet 17,Jakarta,mal,1.47

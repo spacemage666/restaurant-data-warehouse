@@ -1,0 +1,117 @@
+# ============================================================
+# Control Panel - Data Warehouse for Restaurant and Food Waste Prediction
+
+# Unit Description:
+# - All ingredients using basic unit grammation: gram, ml, atau pcs
+# - price_per_unit = price for 1 gram / 1 ml/ 1 pcs
+# - Numbers below "recipe" = all ingredients for 1 PORTION.
+# ============================================================
+
+seed: 42
+n_outlets: 17
+start_date: "2025-01-01"
+end_date: "2025-01-31"
+price_as_of: "2026-04-14"
+
+cities: [Jakarta, Bandung, Surabaya, Yogyakarta, Semarang, Medan]
+
+location_types:
+  mal: 1.4
+  campus: 1.1
+  canteen: 1.0
+  food court: 0.8
+
+# Ingredients
+# category: raw_material | prepared | packaging | utility
+# shelf_life_days = Assumptions
+ingredients:
+  # --- Fresh Ingredients ---
+  - {ingredient_name: beef_meat, category: raw material, storage: frozen, unit: g, shelf_life_days: 90, thawed_shelf_life_day: 3, price_per_unit: 120}
+  - {ingredient_name: chicken_fillet, category: raw_material, storage: frozen, unit: g, shelf_life_days: 90, thawed_shelf_life_days: 2, price_per_unit: 40}
+  - {ingredient_name: rice_blend, category: raw_material, storage: dry, unit: g, shelf_life_days: 365, price_per_unit: 6}
+  - {ingredient_name: carrot, category: raw_material, storage: chilled, unit: g, shelf_life_days: 14, price_per_unit: 16}
+  - {ingredient_name: potato, category: raw_material, storage: dry, unit: g, shelf_life_days: 21, price_per_unit: 13}
+  - {ingredient_name: onion, category: raw_material, storage: dry, unit: g, shelf_life_days: 21, price_per_unit: 40}
+  - {ingredient_name: garlic, category: raw_material, storage: dry, unit: g, shelf_life_days: 30, price_per_unit: 35}
+  - {ingredient_name: ginger, category: raw_material, storage: chilled, unit: g, shelf_life_days: 14, price_per_unit: 125}
+  - {ingredient_name: butter_anchor, category: raw_material, storage: chilled, unit: g, shelf_life_days: 90, price_per_unit: 180}
+  # --- Sauces and seasonings (long shelf life) ---
+  - {ingredient_name: worcestershire_sauce, category: raw_material, storage: dry, unit: ml, shelf_life_days: 365, price_per_unit: 109.375}
+  - {ingredient_name: honey, category: raw_material, storage: dry, unit: g, shelf_life_days: 730, price_per_unit: 72.5}
+  - {ingredient_name: gayo_coffee, category: raw_material, storage: dry, unit: g, shelf_life_days: 180, price_per_unit: 180}
+  - {ingredient_name: tomato_ketchup, category: raw_material, storage: dry, unit: ml, shelf_life_days: 180, price_per_unit: 32.604}
+  - {ingredient_name: kikkoman_sweet_sauce, category: raw_material, storage: dry, unit: ml, shelf_life_days: 180, price_per_unit: 75}
+  - {ingredient_name: dark_chocolate, category: raw_material, storage: dry, unit: g, shelf_life_days: 180, price_per_unit: 72}
+  - {ingredient_name: kikkoman_soy_sauce, category: raw_material, storage: dry, unit: ml, shelf_life_days: 365, price_per_unit: 126.667}
+  - {ingredient_name: chicken_stock_powder, category: raw_material, storage: dry, unit: g, shelf_life_days: 365, price_per_unit: 130}
+  - {ingredient_name: drinking_water, category: raw_material, storage: dry, unit: g, shelf_life_days: 365, price_per_unit: 1}
+  - {ingredient_name: fish_sauce, category: raw_material, storage: dry, unit: ml, shelf_life_days: 365, price_per_unit: 84.444}
+  - {ingredient_name: cornstarch, category: raw_material, storage: dry, unit: g, shelf_life_days: 730, price_per_unit: 20}
+  - {ingredient_name: cooking_oil, category: raw_material, storage: dry, unit: g, shelf_life_days: 365, price_per_unit: 21.111}
+  # --- In-house prepared item (cost per gram taken from its own costing sheet) ---
+  # The spice-blend details inside are INTENTIONALLY not published here.
+  - {ingredient_name: kitsune_curry_roux, category: prepared, storage: frozen, unit: g, shelf_life_days: 90, price_per_unit: 83.612}
+  # --- Packaging and utilities ---
+  - {ingredient_name: paper_bowl_650ml, category: packaging, unit: pcs, price_per_unit: 1080}
+  - {ingredient_name: thinwall_bowl_400ml, category: packaging, unit: pcs, price_per_unit: 920}
+  - {ingredient_name: sterile_spork, category: packaging, unit: pcs, price_per_unit: 500}
+  - {ingredient_name: lpg_gas, category: utility, unit: g, price_per_unit: 38.333}
+
+menu:
+  - menu_name: Kitsune Chicken Curry
+    category: main_dish
+    price: 35000
+    recipe:               # amounts per 1 portion (includes 10000 g of chicken karaage, broken into raw items)
+      chicken_fillet: 100
+      cooking_oil: 100
+      cornstarch: 15
+      fish_sauce: 2.5
+      drinking_water: 170
+      carrot: 20
+      potato: 30
+      onion: 50
+      garlic: 2.8
+      ginger: 2.8
+      butter_anchor: 1.5
+      worcestershire_sauce: 2
+      honey: 1.5
+      gayo_coffee: 0.9
+      tomato_ketchup: 2
+      kikkoman_sweet_sauce: 1.5
+      dark_chocolate: 0.2
+      kikkoman_soy_sauce: 1.5
+      kitsune_curry_roux: 22
+      chicken_stock_powder: 0.2
+      rice_blend: 110
+      lpg_gas: 11
+      paper_bowl_650ml: 1
+      thinwall_bowl_400ml: 1
+
+  - menu_name: Kitsune Beef Curry
+    category: main_dish
+    price: 40000
+    recipe:               # amounts per 1 portion (includes 1000 g of beef, broken into raw items)
+      beef_meat: 100
+      cooking_oil: 100
+      cornstarch: 15
+      fish_sauce: 2.5
+      drinking_water: 170
+      carrot: 20
+      potato: 30
+      onion: 50
+      garlic: 2.8
+      ginger: 2.8
+      butter_anchor: 1.5
+      worcestershire_sauce: 2
+      honey: 1.5
+      gayo_coffee: 0.9
+      tomato_ketchup: 2
+      kikkoman_sweet_sauce: 1.5
+      dark_chocolate: 0.2
+      kikkoman_soy_sauce: 1.5
+      kitsune_curry_roux: 22
+      chicken_stock_powder: 0.2
+      rice_blend: 110
+      lpg_gas: 11
+      paper_bowl_650ml: 1
+      thinwall_bowl_400ml: 1    
