@@ -86,15 +86,14 @@ menu:
       lpg_gas: 11
       paper_bowl_650ml: 1
       thinwall_bowl_400ml: 1
+      sterile_spork: 1
 
   - menu_name: Kitsune Beef Curry
     category: main_dish
     price: 40000
     recipe:               # amounts per 1 portion (includes 1000 g of beef, broken into raw items)
       beef_meat: 100
-      cooking_oil: 100
-      cornstarch: 15
-      fish_sauce: 2.5
+      cooking_oil: 50
       drinking_water: 170
       carrot: 20
       potato: 30
@@ -114,4 +113,44 @@ menu:
       rice_blend: 110
       lpg_gas: 11
       paper_bowl_650ml: 1
-      thinwall_bowl_400ml: 1    
+      thinwall_bowl_400ml: 1
+      sterile_spork: 1
+
+
+# Demand model for daily order generator
+
+demand:
+  base_orders_per_day: 60
+  weekend_multiplier: 1.3
+  noise_sd: 0.12
+  hourly_share:
+    10: 0.03
+    11: 0.10
+    12: 0.22
+    13: 0.18
+    14: 0.07
+    15: 0.04
+    16: 0.04
+    17: 0.08
+    18: 0.12
+    19: 0.09
+    20: 0.03
+  portions_per_order:
+    1: 0.70
+    2: 0.25
+    3: 0.05
+  menu_mix:
+    Kitsune Chicken Curry: 0.6
+    Kitsune Beef Curry: 0.4
+production:
+  forecast_window_days: 14
+  safety_factor: 1.05
+
+inventory:
+  forecast_window_days: 7
+  safety_factor: 1.15
+  restock_cycle_days:
+    frozen: 7
+    chilled: 3
+    dry: 7
+    unspecified: 7
