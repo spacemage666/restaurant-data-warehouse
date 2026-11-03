@@ -1,2 +1,5 @@
 pandas
 pyyaml
+numpy
+psycopg[binary]
+python-dotenv

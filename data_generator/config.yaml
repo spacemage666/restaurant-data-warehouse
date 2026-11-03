@@ -26,7 +26,7 @@ location_types:
 # shelf_life_days = Assumptions
 ingredients:
   # --- Fresh Ingredients ---
-  - {ingredient_name: beef_meat, category: raw material, storage: frozen, unit: g, shelf_life_days: 90, thawed_shelf_life_day: 3, price_per_unit: 120}
+  - {ingredient_name: beef_meat, category: raw_material, storage: frozen, unit: g, shelf_life_days: 90, thawed_shelf_life_days: 3, price_per_unit: 120}
   - {ingredient_name: chicken_fillet, category: raw_material, storage: frozen, unit: g, shelf_life_days: 90, thawed_shelf_life_days: 2, price_per_unit: 40}
   - {ingredient_name: rice_blend, category: raw_material, storage: dry, unit: g, shelf_life_days: 365, price_per_unit: 6}
   - {ingredient_name: carrot, category: raw_material, storage: chilled, unit: g, shelf_life_days: 14, price_per_unit: 16}
