@@ -3,3 +3,5 @@ pyyaml
 numpy
 psycopg[binary]
 python-dotenv
+dbt-core
+dbt-postgres

@@ -16,10 +16,10 @@ price_as_of: "2026-04-14"
 cities: [Jakarta, Bandung, Surabaya, Yogyakarta, Semarang, Medan]
 
 location_types:
-  mal: 1.4
+  mall: 1.4
   campus: 1.1
   canteen: 1.0
-  food court: 0.8
+  food_court: 0.8
 
 # Ingredients
 # category: raw_material | prepared | packaging | utility

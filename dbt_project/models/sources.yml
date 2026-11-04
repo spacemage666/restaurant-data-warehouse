@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Raw tables loaded from the generated CSV files.
+    schema: bronze
+    tables:
+      - name: outlets
+      - name: ingredients
+      - name: menu_items
+      - name: recipes
+      - name: orders
+      - name: order_items
+      - name: production_logs
+      - name: purchases
+      - name: waste_logs

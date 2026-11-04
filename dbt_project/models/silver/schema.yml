@@ -1,0 +1,171 @@
+version: 2
+
+models:
+  - name: outlets
+    description: One row per outlet.
+    columns:
+      - name: outlet_id
+        data_tests: [unique, not_null]
+      - name: location_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [mall, campus, canteen, food_court]
+
+  - name: ingredients
+    description: One row per ingredient, packaging item or utility.
+    columns:
+      - name: ingredient_id
+        data_tests: [unique, not_null]
+      - name: ingredient_name
+        data_tests: [unique, not_null]
+      - name: category
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [raw_material, prepared, packaging, utility]
+      - name: storage
+        description: Null for packaging and utility.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [frozen, chilled, dry]
+      - name: price_per_unit
+        data_tests: [not_null]
+
+  - name: menu_items
+    description: One row per menu item.
+    columns:
+      - name: menu_id
+        data_tests: [unique, not_null]
+      - name: price
+        data_tests: [not_null]
+
+  - name: recipes
+    description: Quantity of each ingredient needed for one portion of a menu item.
+    columns:
+      - name: recipe_id
+        data_tests: [unique, not_null]
+      - name: menu_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('menu_items')
+                field: menu_id
+      - name: ingredient_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('ingredients')
+                field: ingredient_id
+
+  - name: orders
+    description: One row per customer order.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: outlet_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('outlets')
+                field: outlet_id
+      - name: order_ts
+        data_tests: [not_null]
+
+  - name: order_items
+    description: One row per menu item within an order.
+    columns:
+      - name: order_item_id
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+      - name: menu_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('menu_items')
+                field: menu_id
+
+  - name: production_logs
+    description: Daily cooking plan and result per outlet and menu item.
+    columns:
+      - name: production_id
+        data_tests: [unique, not_null]
+      - name: outlet_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('outlets')
+                field: outlet_id
+      - name: menu_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('menu_items')
+                field: menu_id
+
+  - name: purchases
+    description: Ingredient purchases per outlet.
+    columns:
+      - name: purchase_id
+        data_tests: [unique, not_null]
+      - name: outlet_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('outlets')
+                field: outlet_id
+      - name: ingredient_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('ingredients')
+                field: ingredient_id
+      - name: purchase_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [scheduled, emergency]
+
+  - name: waste_logs
+    description: Ingredients thrown away per outlet.
+    columns:
+      - name: waste_id
+        data_tests: [unique, not_null]
+      - name: outlet_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('outlets')
+                field: outlet_id
+      - name: ingredient_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('ingredients')
+                field: ingredient_id
+      - name: reason
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [overproduction, expired, expired_after_thaw, expired_frozen]
