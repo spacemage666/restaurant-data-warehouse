@@ -5,3 +5,4 @@ psycopg[binary]
 python-dotenv
 dbt-core
 dbt-postgres
+streamlit

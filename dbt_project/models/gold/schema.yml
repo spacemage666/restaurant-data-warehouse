@@ -1,0 +1,156 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: One row per calendar day covered by the data.
+    columns:
+      - name: date_key
+        description: Date as an integer, YYYYMMDD.
+        data_tests: [unique, not_null]
+      - name: date_day
+        data_tests: [unique, not_null]
+      - name: is_weekend
+        data_tests: [not_null]
+
+  - name: dim_outlet
+    description: One row per outlet.
+    columns:
+      - name: outlet_id
+        data_tests: [unique, not_null]
+
+  - name: dim_ingredient
+    description: One row per ingredient, packaging item or utility.
+    columns:
+      - name: ingredient_id
+        data_tests: [unique, not_null]
+
+  - name: dim_menu_item
+    description: One row per menu item, with recipe cost and gross margin per portion.
+    columns:
+      - name: menu_id
+        data_tests: [unique, not_null]
+      - name: cost_per_portion
+        description: Cost of all ingredients, packaging and gas for one portion.
+        data_tests: [not_null]
+      - name: food_cost_per_portion
+        description: Cost of food only (raw materials and prepared items).
+        data_tests: [not_null]
+
+  - name: fct_sales
+    description: One row per menu item within an order.
+    columns:
+      - name: order_item_id
+        data_tests: [unique, not_null]
+      - name: outlet_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_outlet')
+                field: outlet_id
+      - name: menu_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_menu_item')
+                field: menu_id
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+  - name: fct_production
+    description: One row per outlet, menu item and day.
+    columns:
+      - name: production_id
+        data_tests: [unique, not_null]
+      - name: outlet_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_outlet')
+                field: outlet_id
+      - name: menu_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_menu_item')
+                field: menu_id
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+  - name: fct_purchases
+    description: One row per ingredient purchase.
+    columns:
+      - name: purchase_id
+        data_tests: [unique, not_null]
+      - name: outlet_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_outlet')
+                field: outlet_id
+      - name: ingredient_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_ingredient')
+                field: ingredient_id
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+  - name: fct_waste
+    description: One row per waste record, valued at the ingredient price.
+    columns:
+      - name: waste_id
+        data_tests: [unique, not_null]
+      - name: outlet_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_outlet')
+                field: outlet_id
+      - name: ingredient_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_ingredient')
+                field: ingredient_id
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+  - name: mart_daily_sales
+    description: Sales per day, outlet and menu item. Feeds the dashboard.
+  - name: mart_hourly_sales
+    description: Sales per day, outlet and hour. Feeds the dashboard.
+  - name: mart_daily_production
+    description: Cooking plan and result per day, outlet and menu item. Feeds the dashboard.
+  - name: mart_waste_by_ingredient
+    description: Waste per day, outlet, ingredient and reason. Feeds the dashboard.
+  - name: mart_purchases_by_ingredient
+    description: Purchases per day, outlet and ingredient. Feeds the dashboard.
