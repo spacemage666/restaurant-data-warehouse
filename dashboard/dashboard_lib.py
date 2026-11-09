@@ -57,7 +57,41 @@ def load_from_db():
 
 def load_from_csv(folder=SAMPLE_DIR):
     """Read the marts from CSV files (used when no database is available)."""
-    return {name: _clean(pd.read_csv(Path(folder) / f"{name}.csv")) for name in MARTS}
+    return {name: _clean(pd.read_csv(Path(folder) / f"{name}.csv.gz")) for name in MARTS}
+
+
+# ---------------------------------------------------------------- friendly wording
+
+REASON_LABELS = {
+    "overproduction": "Cooked but not sold",
+    "expired": "Expired in storage",
+    "expired_after_thaw": "Expired after thawing",
+    "expired_frozen": "Expired in the freezer",
+}
+PURCHASE_LABELS = {"scheduled": "Regular restock", "emergency": "Urgent purchase"}
+LOCATION_LABELS = {"mall": "Mall", "campus": "Campus", "canteen": "Canteen", "food_court": "Food court"}
+
+
+def pretty_name(text):
+    """beef_meat -> Beef Meat"""
+    return str(text).replace("_", " ").title()
+
+
+def prettify(marts):
+    """Replace technical codes by plain words. Display only: the database is not touched."""
+    out = {}
+    for name, df in marts.items():
+        df = df.copy()
+        if "ingredient_name" in df.columns:
+            df["ingredient_name"] = df["ingredient_name"].map(pretty_name)
+        if "reason" in df.columns:
+            df["reason"] = df["reason"].map(lambda x: REASON_LABELS.get(x, pretty_name(x)))
+        if "purchase_type" in df.columns:
+            df["purchase_type"] = df["purchase_type"].map(lambda x: PURCHASE_LABELS.get(x, pretty_name(x)))
+        if "location_type" in df.columns:
+            df["location_type"] = df["location_type"].map(lambda x: LOCATION_LABELS.get(x, pretty_name(x)))
+        out[name] = df
+    return out
 
 
 def load_marts():
@@ -68,7 +102,7 @@ def load_marts():
     source = os.getenv("DASHBOARD_SOURCE")
     if source is None:
         source = "db" if os.getenv("POSTGRES_PASSWORD") else "csv"
-    return load_from_db() if source == "db" else load_from_csv()
+    return prettify(load_from_db() if source == "db" else load_from_csv())
 
 
 # ---------------------------------------------------------------- filters
@@ -109,7 +143,7 @@ def kpis(f):
         "waste_rate_pct": _ratio(prod["portions_wasted"].sum(), prod["portions_cooked"].sum()),
         "wasted_food_cost": prod["wasted_food_cost"].sum(),
         "emergency_share_pct": _ratio(
-            purchases.loc[purchases["purchase_type"] == "emergency", "total_cost"].sum(),
+            purchases.loc[purchases["purchase_type"] == PURCHASE_LABELS["emergency"], "total_cost"].sum(),
             purchases["total_cost"].sum(),
         ),
     }
@@ -174,5 +208,118 @@ def spend_by_type(purchases):
     return purchases.groupby("purchase_type")["total_cost"].sum().sort_values(ascending=False)
 
 
+def monthly_spend(purchases):
+    month = purchases["date_day"].dt.strftime("%Y-%m")
+    return purchases.groupby(month)["total_cost"].sum()
+
+
 def top_purchases(purchases, top=10):
     return purchases.groupby("ingredient_name")["total_cost"].sum().sort_values(ascending=False).head(top)
+
+
+# ---------------------------------------------------------------- v2: chart-ready tables
+
+MILLION = 1e6
+
+
+def weekly(df, how="sum"):
+    """Daily table (date index) -> weekly table, weeks starting on Monday."""
+    r = df.resample("W-MON", label="left", closed="left")
+    return r.sum() if how == "sum" else r.mean()
+
+
+def weekly_revenue_by_menu(sales):
+    """Long table: week, menu, revenue in IDR million."""
+    d = sales.pivot_table(index="date_day", columns="menu_name", values="revenue", aggfunc="sum").fillna(0)
+    w = weekly(d) / MILLION
+    # drop the first and last weeks when they are partial, so lines do not dip at the edges
+    if len(w) > 2:
+        w = w.iloc[1:-1]
+    long = w.reset_index().melt(id_vars="date_day", var_name="Menu", value_name="Sales (IDR million)")
+    return long.rename(columns={"date_day": "Week"})
+
+
+def weekly_cooked_sold(prod):
+    d = prod.groupby("date_day")[["portions_cooked", "portions_sold", "portions_wasted"]].sum()
+    w = weekly(d)
+    if len(w) > 2:
+        w = w.iloc[1:-1]
+    w = w.rename(columns={"portions_cooked": "Cooked", "portions_sold": "Sold", "portions_wasted": "Thrown away"})
+    long = w.reset_index().melt(id_vars="date_day", var_name="Servings", value_name="Servings per week")
+    return long.rename(columns={"date_day": "Week"})
+
+
+def sales_by_outlet(sales, top=10):
+    s = sales.groupby("outlet_name")["revenue"].sum().sort_values(ascending=False).head(top) / MILLION
+    return s.rename("Sales (IDR million)").reset_index().rename(columns={"outlet_name": "Outlet"})
+
+
+def hourly_long(hourly):
+    h = hourly_profile(hourly).reset_index()
+    h["Hour"] = h["order_hour"].map(lambda x: f"{int(x):02d}:00")
+    return h.melt(id_vars=["order_hour", "Hour"], var_name="Day type", value_name="Servings per outlet per day")
+
+
+def throw_away_by_outlet(prod, top=10):
+    s = waste_rate_by_outlet(prod, top).rename("Thrown away (% of cooked)")
+    return s.reset_index().rename(columns={"outlet_name": "Outlet"})
+
+
+def waste_cost_by_ingredient(waste, top=10):
+    s = top_waste_ingredients(waste, top) / MILLION
+    return s.rename("Cost of food thrown away (IDR million)").reset_index().rename(columns={"ingredient_name": "Ingredient"})
+
+
+def waste_cost_outlet_month(waste):
+    """Cost of thrown-away food per outlet and month, in IDR million (for the heatmap)."""
+    t = waste.assign(Month=waste["date_day"].dt.strftime("%Y-%m")).groupby(["outlet_name", "Month"])["waste_cost"].sum()
+    t = (t / MILLION).rename("IDR million").reset_index().rename(columns={"outlet_name": "Outlet"})
+    return t
+
+
+def monthly_spend_table(purchases):
+    """Monthly spend split by regular vs urgent purchases, in IDR million."""
+    month = purchases["date_day"].dt.strftime("%Y-%m")
+    t = purchases.groupby([month.rename("Month"), "purchase_type"])["total_cost"].sum() / MILLION
+    return t.rename("Spend (IDR million)").reset_index().rename(columns={"purchase_type": "Type"})
+
+
+def spend_by_ingredient(purchases, top=10):
+    s = top_purchases(purchases, top) / MILLION
+    return s.rename("Spend (IDR million)").reset_index().rename(columns={"ingredient_name": "Ingredient"})
+
+
+def month_over_month(sales, column="revenue"):
+    """Percent change in average daily value, last full month vs the month before; None if not available."""
+    if sales.empty:
+        return None
+    d = sales.groupby("date_day")[column].sum()
+    last_day = d.index.max()
+    if last_day != last_day + pd.offsets.MonthEnd(0):  # last month incomplete
+        d = d[d.index < last_day.replace(day=1)]
+    if d.empty:
+        return None
+    m = d.groupby(d.index.to_period("M")).mean()  # daily average, so short months compare fairly
+    if len(m) < 2 or m.iloc[-2] == 0:
+        return None
+    return float((m.iloc[-1] / m.iloc[-2] - 1) * 100)
+
+
+def summary_sentences(f):
+    """Three plain-English sentences describing the selected data."""
+    sales, prod = f["mart_daily_sales"], f["mart_daily_production"]
+    k = kpis(f)
+    start, end = sales["date_day"].min(), sales["date_day"].max()
+    top_menu = sales.groupby("menu_name")["portions"].sum().idxmax()
+    top_outlet = sales.groupby("outlet_name")["revenue"].sum().idxmax()
+    hourly = f["mart_hourly_sales"].groupby("order_hour")["portions"].sum()
+    peak = int(hourly.idxmax()) if not hourly.empty else None
+    rates = waste_rate_by_outlet(prod, 1)
+    worst = rates.index[0] if len(rates) else "n/a"
+    s1 = (f"From {start:%d %b %Y} to {end:%d %b %Y}, the selected outlets sold {k['portions_sold']:,.0f} servings "
+          f"and made IDR {k['revenue'] / MILLION:,.0f} million in sales.")
+    s2 = (f"{top_menu} is the best seller, {top_outlet} brings in the most sales"
+          + (f", and the busiest hour is {peak:02d}:00." if peak is not None else "."))
+    s3 = (f"About {k['waste_rate_pct']:.1f}% of the food we cook is thrown away "
+          f"(IDR {k['wasted_food_cost'] / MILLION:,.1f} million), most at {worst}.")
+    return [s1, s2, s3]

@@ -26,15 +26,17 @@ def portions_sold(orders, items, dates):
     return sold.unstack("order_date").reindex(columns=dates).fillna(0.0)
 
 
-def plan_production(sold, dates, prod):
-    """The kitchen cooks forecast x safety factor; it cooks more if it sells out."""
-    weekend = np.asarray(dates.day_of_week >= 5)
+def plan_production(sold, dates, prod, seed=0):
+    """The kitchen cooks forecast x safety factor (x a random error); it cooks more if it sells out."""
+    weekend = np.asarray(dates.dayofweek >= 5)
     window = prod["forecast_window_days"]
     plans, rows = {}, []
     for (outlet_id, menu_id), series in sold.iterrows():
         sold_arr = series.to_numpy()
         planned = np.zeros(len(dates))
         forecast = np.zeros(len(dates))
+        gen = np.random.default_rng([seed, int(outlet_id), int(menu_id), 1])
+        noise = gen.lognormal(0.0, prod.get("forecast_noise_sd", 0.0), size=len(dates))
         for t in range(len(dates)):
             same_type = [sold_arr[k] for k in range(max(0, t - window), t)
                          if weekend[k] == weekend[t]]
@@ -42,7 +44,7 @@ def plan_production(sold, dates, prod):
                 same_type = [sold_arr[k] for k in range(min(7, len(dates)))
                              if weekend[k] == weekend[t]] or list(sold_arr[:7])
             forecast[t] = sum(same_type) / len(same_type)
-            planned[t] = math.ceil(forecast[t] * prod["safety_factor"])
+            planned[t] = math.ceil(forecast[t] * prod["safety_factor"] * noise[t])
         cooked = np.maximum(planned, sold_arr)
         plans[(int(outlet_id), int(menu_id))] = (sold_arr, planned, cooked)
         for t, date in enumerate(dates):
@@ -111,7 +113,7 @@ def round_qty(qty, unit):
     return math.ceil(qty) if unit == "pcs" else round(qty, 1)
 
 
-def simulate(outlet_id, ing, demand, dates, inv):
+def simulate(outlet_id, ing, demand, dates, inv, seed=0):
     """Day-by-day stock simulation for one ingredient at one outlet."""
     storage = ing["storage"] if isinstance(ing["storage"], str) else "unspecified"
     cycle = inv["restock_cycle_days"][storage]
@@ -120,6 +122,18 @@ def simulate(outlet_id, ing, demand, dates, inv):
     frozen = storage == "frozen"
     stock, thawed = [], []  # frozen items: stock = freezer, thawed = ready to use
     purchases, waste = [], []
+    gen = np.random.default_rng([seed, outlet_id, int(ing["ingredient_id"]), 2])
+
+    def order_error():
+        """Real orders are never perfect: noise, short deliveries and over-ordering."""
+        factor = gen.lognormal(0.0, inv.get("order_noise_sd", 0.0))
+        roll = gen.random()
+        short_p, over_p = inv.get("short_delivery_prob", 0.0), inv.get("over_order_prob", 0.0)
+        if roll < short_p:
+            factor *= gen.uniform(*inv["short_delivery_range"])
+        elif roll < short_p + over_p:
+            factor *= gen.uniform(*inv["over_order_range"])
+        return factor
 
     def expiry(date, days):
         return NEVER if pd.isna(days) else date + pd.Timedelta(days=int(days))
@@ -144,17 +158,28 @@ def simulate(outlet_id, ing, demand, dates, inv):
                     lot["qty"] = 0.0
             lots[:] = [lot for lot in lots if lot["qty"] > EPS]
 
+        # 1b. chilled items sometimes spoil early (fridge problems, bad batches)
+        if storage == "chilled" and stock and gen.random() < inv.get("spoilage_prob", 0.0):
+            lot = stock[int(gen.integers(len(stock)))]
+            lost = lot["qty"] * gen.uniform(*inv["spoilage_range"])
+            if lost > EPS:
+                waste.append({"outlet_id": outlet_id, "ingredient_id": ing["ingredient_id"],
+                              "waste_date": date, "reason": "expired", "quantity": round(lost, 2)})
+                lot["qty"] -= lost
+
         fc = forecast(demand, t, inv["forecast_window_days"])
 
         # 2. scheduled restock: top up to the forecast for the next cycle
         if t == 0 or t % cycle == offset:
             need = fc * (cycle + 1) * inv["safety_factor"] - total(stock) - total(thawed)
             if need > EPS:
-                buy(date, need, "scheduled", keep=True)
+                buy(date, need * order_error(), "scheduled", keep=True)
 
         # 3. frozen items: thaw the forecast amount for today
         if frozen:
             planned = fc * inv["safety_factor"] - total(thawed)
+            if gen.random() < inv.get("over_thaw_prob", 0.0):  # kitchen thaws too much
+                planned *= gen.uniform(*inv["over_thaw_range"])
             if planned > EPS:
                 moved = planned - take(stock, planned)
                 if moved > EPS:
@@ -184,14 +209,14 @@ def main():
     }
 
     sold = portions_sold(orders, items, dates)
-    plans, production_df = plan_production(sold, dates, cfg["production"])
+    plans, production_df = plan_production(sold, dates, cfg["production"], cfg["seed"])
     usage = ingredient_usage(plans, recipe_by_menu, category)
 
     all_purchases = []
     all_waste = overproduction_waste(plans, recipe_by_menu, category, dates)
     for (outlet_id, ingredient_id), demand in usage.items():
         ing = ingredients.loc[ingredient_id].to_dict()
-        purchases, waste = simulate(outlet_id, ing, demand, dates, cfg["inventory"])
+        purchases, waste = simulate(outlet_id, ing, demand, dates, cfg["inventory"], cfg["seed"])
         all_purchases += purchases
         all_waste += waste
 
