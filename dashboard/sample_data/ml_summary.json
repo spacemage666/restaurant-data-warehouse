@@ -1,0 +1,74 @@
+{
+  "split": {
+    "train_end": "2025-09-01",
+    "test_start": "2025-11-01",
+    "test_days": 61,
+    "test_end": "2025-12-31"
+  },
+  "safety_factor": {
+    "Kitsune Chicken Curry": 1.01,
+    "Kitsune Beef Curry": 0.93
+  },
+  "accuracy": {
+    "Same day last week": {
+      "mae": 6.77,
+      "rmse": 8.83,
+      "wape_pct": 29.22
+    },
+    "Kitchen rule (14-day average)": {
+      "mae": 5.08,
+      "rmse": 6.66,
+      "wape_pct": 21.95
+    },
+    "ML model": {
+      "mae": 4.77,
+      "rmse": 6.23,
+      "wape_pct": 20.62
+    }
+  },
+  "money": {
+    "Kitchen today": {
+      "portions_cooked": 51639.0,
+      "portions_wasted": 7680.0,
+      "portions_unmet": 4070.0,
+      "waste_rate_pct": 14.87,
+      "service_level_pct": 91.53,
+      "waste_cost_idr": 125611298.86,
+      "lost_profit_idr": 72672562.04,
+      "total_cost_idr": 198283860.9
+    },
+    "Kitchen rule, no human error": {
+      "portions_cooked": 51272.0,
+      "portions_wasted": 7141.0,
+      "portions_unmet": 3898.0,
+      "waste_rate_pct": 13.93,
+      "service_level_pct": 91.88,
+      "waste_cost_idr": 117062117.02,
+      "lost_profit_idr": 69583261.84,
+      "total_cost_idr": 186645378.86
+    },
+    "ML model": {
+      "portions_cooked": 47942.0,
+      "portions_wasted": 4943.0,
+      "portions_unmet": 5030.0,
+      "waste_rate_pct": 10.31,
+      "service_level_pct": 89.53,
+      "waste_cost_idr": 78607160.08,
+      "lost_profit_idr": 89290064.9,
+      "total_cost_idr": 167897224.98
+    }
+  },
+  "saving_idr": 30386635.92,
+  "saving_pct": 15.32,
+  "importance_pct": {
+    "day_of_week": 70.25,
+    "location_type": 10.3,
+    "mean_28": 7.49,
+    "is_payday": 4.42,
+    "lag_7": 3.43,
+    "lag_14": 2.07,
+    "day_of_month": 1.05,
+    "menu_id": 1.0
+  },
+  "assumption": "Portions that were wanted but not cooked are treated as lost sales (lost profit)."
+}

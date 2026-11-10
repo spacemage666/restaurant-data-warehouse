@@ -100,7 +100,9 @@ c3.metric("Servings sold", f"{k['portions_sold']:,.0f}")
 c4.metric("Food thrown away", f"{k['waste_rate_pct']:.1f}%", help="Share of cooked servings that were not sold.")
 c5.metric("Waste cost (IDR M)", millions(k["wasted_food_cost"]), help="Ingredient cost of the food thrown away.")
 
-tab_sales, tab_waste, tab_purchases = st.tabs(["💰 Sales", "🗑️ Cooking and food waste", "🛒 Buying ingredients"])
+tab_sales, tab_waste, tab_purchases, tab_forecast = st.tabs(
+    ["💰 Sales", "🗑️ Cooking and food waste", "🛒 Buying ingredients", "🔮 Forecast"]
+)
 
 # ------------------------------------------------------------ sales tab
 with tab_sales:
@@ -169,3 +171,62 @@ with tab_purchases:
     with right:
         st.subheader("Which ingredients cost the most?")
         st.altair_chart(charts.hbar(lib.spend_by_ingredient(f["mart_purchases_by_ingredient"]), "Ingredient", "Spend (IDR million)", fmt=",.1f"))
+
+# ------------------------------------------------------------ forecast tab
+with tab_forecast:
+    pred_all, ml_summary = lib.load_ml()
+    if pred_all is None:
+        st.info("No forecast yet. Run `python ml/train.py` first.")
+    else:
+        pred = lib.filter_predictions(pred_all, outlet_ids, chosen_menus)
+        if pred.empty:
+            st.warning("No forecast data for the selected outlets and menus.")
+        else:
+            sim = lib.money_simulation(pred).set_index("Plan")
+            acc = lib.forecast_accuracy(pred)
+            kitchen, model = sim.loc["Kitchen today"], sim.loc["ML model"]
+            rule = sim.loc["Kitchen rule (no human error)"]
+            saving = kitchen["Total"] - model["Total"]
+            saving_vs_rule = rule["Total"] - model["Total"]
+            first, last = pred["date_day"].min(), pred["date_day"].max()
+
+            st.markdown(
+                f'<div class="summary">Looking back at {first:%d %b} to {last:%d %b %Y}, a forecast model would have '
+                f'cut wasted food from IDR {millions(kitchen["Wasted food"])} million to IDR {millions(model["Wasted food"])} million. '
+                f'After counting the profit missed when we cook too little, the net saving is IDR {millions(saving)} million '
+                f'({saving / kitchen["Total"] * 100:.1f}%) compared with today. Against the same kitchen rule without human error, '
+                f'the saving is IDR {millions(saving_vs_rule)} million ({saving_vs_rule / rule["Total"] * 100:.1f}%).</div>',
+                unsafe_allow_html=True,
+            )
+
+            f1, f2, f3, f4 = st.columns(4)
+            f1.metric("Wasted food, kitchen today (IDR M)", millions(kitchen["Wasted food"]))
+            f2.metric("Wasted food, ML model (IDR M)", millions(model["Wasted food"]),
+                      f"{(model['Wasted food'] / kitchen['Wasted food'] - 1) * 100:+.1f}%", delta_color="inverse")
+            f3.metric("Net saving (IDR M)", millions(saving), f"{saving / kitchen['Total'] * 100:.1f}% of total cost")
+            f4.metric("Customers served", f"{model['Served']:.1f}%", f"{model['Served'] - kitchen['Served']:+.1f} pts vs today")
+
+            st.subheader("Does the forecast follow real sales?")
+            st.altair_chart(charts.line(lib.daily_forecast_long(pred), "Date", "Servings per day", "Series"))
+
+            left, right = st.columns(2)
+            with left:
+                st.subheader("What does each cooking plan cost?")
+                st.altair_chart(charts.hstacked(lib.money_long(sim.reset_index()), "Plan", "IDR million", "Cost"))
+            with right:
+                st.subheader("How far off is each forecast?")
+                acc_df = pd.DataFrame({"Method": list(acc), "Average miss (% of sales)": list(acc.values())})
+                st.altair_chart(charts.hbar(acc_df, "Method", "Average miss (% of sales)", height=220, fmt=",.1f"))
+
+            st.subheader("What does the model look at?")
+            st.altair_chart(charts.hbar(lib.importance_table(ml_summary), "What the model looks at", "Share of influence (%)", height=260, fmt=",.1f"))
+
+            with st.expander("Assumptions and limits"):
+                st.markdown(
+                    "- The data is synthetic, so real results will differ.\n"
+                    "- The model learned from January to October and was tested on the last two months it had not seen.\n"
+                    "- Portions that customers wanted but we did not cook are counted as lost sales.\n"
+                    "- \"Kitchen today\" includes random misjudgment of about 10% that we assumed. "
+                    "\"Kitchen rule (no human error)\" is the same rule applied exactly, which is the fairer comparison for the model.\n"
+                    "- A leaner plan wastes less food but serves slightly fewer customers: this is a trade-off, not a free gain."
+                )

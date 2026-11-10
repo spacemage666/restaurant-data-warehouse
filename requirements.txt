@@ -6,3 +6,4 @@ python-dotenv
 dbt-core
 dbt-postgres
 streamlit
+scikit-learn

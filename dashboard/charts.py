@@ -54,7 +54,7 @@ def hbar(df, category, value, height=300, value_title=None, fmt=",.1f"):
         alt.Chart(df)
         .mark_bar(cornerRadiusEnd=4, color=PALETTE[0])
         .encode(
-            y=_y(category, "N", sort="-x", title=None),
+            y=_y(category, "N", sort="-x", title=None, axis=alt.Axis(labelLimit=260)),
             x=_x(value, "Q", title=value_title or value),
             tooltip=[_tip(category, "N"), _tip(value, "Q", format=fmt)],
         )
@@ -86,6 +86,21 @@ def heatmap(df, x, y, value, height=300, value_title=None):
             y=_y(y, "N", title=None, axis=alt.Axis(labelOverlap=False)),
             color=alt.Color(field=value, type="quantitative", title=value_title or value, scale=alt.Scale(scheme="oranges")),
             tooltip=[_tip(y, "N"), _tip(x, "O"), _tip(value, "Q", format=",.2f")],
+        )
+    )
+    return _style(chart, height)
+
+
+def hstacked(df, category, value, color, height=220, value_title=None):
+    """Horizontal stacked bars (one bar per category, split by color)."""
+    chart = (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            y=_y(category, "N", title=None, sort=None, axis=alt.Axis(labelLimit=260)),
+            x=_x(value, "Q", title=value_title or value, stack="zero"),
+            color=_color(color, scale=alt.Scale(range=[PALETTE[0], PALETTE[2]])),
+            tooltip=[_tip(category, "N"), _tip(color, "N"), _tip(value, "Q", format=",.1f")],
         )
     )
     return _style(chart, height)

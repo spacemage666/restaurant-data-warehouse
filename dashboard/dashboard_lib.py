@@ -323,3 +323,100 @@ def summary_sentences(f):
     s3 = (f"About {k['waste_rate_pct']:.1f}% of the food we cook is thrown away "
           f"(IDR {k['wasted_food_cost'] / MILLION:,.1f} million), most at {worst}.")
     return [s1, s2, s3]
+
+
+# ---------------------------------------------------------------- forecast tab
+
+STRATEGIES = {
+    "Kitchen today": "kitchen_plan",
+    "Kitchen rule (no human error)": "rule_plan",
+    "ML model": "model_plan",
+}
+FORECAST_COLUMNS = {
+    "Actual sales": "actual",
+    "ML model": "model_forecast",
+    "Kitchen rule": "rule_forecast",
+}
+FEATURE_LABELS = {
+    "day_of_week": "Day of the week",
+    "location_type": "Type of location",
+    "mean_28": "Average of the last 4 weeks",
+    "mean_14": "Average of the last 2 weeks",
+    "mean_7": "Average of the last week",
+    "is_payday": "Payday period",
+    "lag_7": "Same day last week",
+    "lag_14": "Same day 2 weeks ago",
+    "lag_1": "Yesterday",
+    "trend_ratio": "Recent trend",
+    "same_weekday_mean_4": "Same weekday, last 4 weeks",
+    "is_holiday": "Public holiday",
+    "is_weekend": "Weekend",
+    "day_of_month": "Day of the month",
+    "month": "Month",
+    "outlet_id": "Which outlet",
+    "menu_id": "Which menu",
+}
+
+
+def load_ml(folder=SAMPLE_DIR):
+    """Predictions and summary written by ml/train.py. Returns (None, None) if not there yet."""
+    import json
+
+    pred_file, summary_file = Path(folder) / "ml_predictions.csv.gz", Path(folder) / "ml_summary.json"
+    if not (pred_file.exists() and summary_file.exists()):
+        return None, None
+    pred = pd.read_csv(pred_file, parse_dates=["date_day"])
+    summary = json.loads(summary_file.read_text(encoding="utf-8"))
+    return pred, summary
+
+
+def filter_predictions(pred, outlet_ids, menu_names):
+    return pred[pred["outlet_id"].isin(outlet_ids) & pred["menu_name"].isin(menu_names)]
+
+
+def forecast_accuracy(pred):
+    """Total absolute error as a share of total sales (lower is better)."""
+    actual = pred["actual"].sum()
+    return {
+        "ML model": (pred["actual"] - pred["model_forecast"]).abs().sum() / actual * 100,
+        "Kitchen rule": (pred["actual"] - pred["rule_forecast"]).abs().sum() / actual * 100,
+        "Same day last week": (pred["actual"] - pred["last_week"]).abs().sum() / actual * 100,
+    }
+
+
+def money_simulation(pred):
+    """Waste cost and missed profit for each cooking plan (missed demand = lost sale)."""
+    rows = []
+    for name, col in STRATEGIES.items():
+        wasted = (pred[col] - pred["actual"]).clip(lower=0)
+        unmet = (pred["actual"] - pred[col]).clip(lower=0)
+        rows.append({
+            "Plan": name,
+            "Wasted food": float((wasted * pred["waste_cost_per_portion"]).sum()),
+            "Missed profit": float((unmet * pred["lost_profit_per_portion"]).sum()),
+            "Served": float(1 - unmet.sum() / pred["actual"].sum()) * 100,
+        })
+    out = pd.DataFrame(rows)
+    out["Total"] = out["Wasted food"] + out["Missed profit"]
+    return out
+
+
+def money_long(sim):
+    """Long table in IDR million for the stacked bars."""
+    long = sim.melt(id_vars="Plan", value_vars=["Wasted food", "Missed profit"], var_name="Cost", value_name="IDR million")
+    long["IDR million"] = long["IDR million"] / MILLION
+    return long
+
+
+def daily_forecast_long(pred):
+    d = pred.groupby("date_day")[list(FORECAST_COLUMNS.values())].sum()
+    d = d.rename(columns={v: k for k, v in FORECAST_COLUMNS.items()})
+    long = d.reset_index().melt(id_vars="date_day", var_name="Series", value_name="Servings per day")
+    return long.rename(columns={"date_day": "Date"})
+
+
+def importance_table(summary):
+    share = pd.Series(summary["importance_pct"]).round(1)
+    out = share.rename("Share of influence (%)").reset_index()
+    out["index"] = out["index"].map(lambda f: FEATURE_LABELS.get(f, f))
+    return out.rename(columns={"index": "What the model looks at"})
