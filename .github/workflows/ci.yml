@@ -1,0 +1,39 @@
+# Continuous integration: on every push, rebuild the whole project on a clean machine and check it still works.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:        # adds a "Run workflow" button in the Actions tab
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Download the code
+        uses: actions/checkout@v4
+
+      - name: Install Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install packages
+        run: pip install -r requirements.txt
+
+      - name: Create .env (throwaway database, only lives for this run)
+        run: cp .env.example .env
+
+      - name: Run the whole pipeline (database, data, bronze, dbt tests, exports, forecast)
+        run: python run_pipeline.py
+
+      - name: Dashboard smoke test
+        run: python ci/dashboard_smoke_test.py
+
+      - name: Show database logs (only when something failed)
+        if: failure()
+        run: docker compose logs postgres
