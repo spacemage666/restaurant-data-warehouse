@@ -1,5 +1,7 @@
 # Data Warehouse for Restaurant and Food Waste Prediction
 
+[![CI](https://github.com/spacemage666/restaurant-data-warehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/spacemage666/restaurant-data-warehouse/actions/workflows/ci.yml)
+
 This is an end-to-end data project. A multi-outlet Japanese curry restaurant: synthetic data generation, a PostgreSQL warehouse with bronze / silver / gold layers built by dbt, a Streamlit dashboard, and a demand forecast that shows how much food waste a better cooking plan could avoid.
 
 The recipes and ingredient prices come from the costing workbook of a real small curry business. The sales are simulated, so no customer data is used or published.
@@ -142,11 +144,11 @@ run_pipeline.py   one command for the whole pipeline
 - **Tests act as contracts:** dbt runs 125 checks on every build, including custom ones that confirm gold sales match silver and that waste totals match production.
 - **Tests act as contracts:** 103 dbt tests run on every build, including custom ones that confirm gold sales match silver and that waste totals match production.
 - **One command rebuilds everything:** `run_pipeline.py` regenerates data, loads it, builds the dbt models and trains the model in about a minute.
+- **Automated checks:** every push rebuilds the project on a clean machine with GitHub Actions: database, data, dbt tests, forecast and a dashboard smoke test.
 
 ## Roadmap
 
 - Orchestration with Airflow (one simple DAG).
-- GitHub Actions to run tests on every push.
 - Online demo on Streamlit Community Cloud.
 
 ## Author
